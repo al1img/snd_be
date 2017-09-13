@@ -172,6 +172,7 @@ private:
 	pa_threaded_mainloop* mMainloop;
 	pa_context*  mContext;
 	pa_stream* mStream;
+	pa_time_event* mTimeEvent;
 	int mSuccess;
 	PulseMutex mMutex;
 	SoundItf::StreamType mType;
@@ -189,11 +190,15 @@ private:
 	static void sStreamRequest(pa_stream *stream, size_t nbytes, void *data);
 	static void sLatencyUpdate(pa_stream *stream, void *data);
 	static void sSuccessCbk(pa_stream* stream, int success, void *data);
+	static void sTimeEventCbk(pa_mainloop_api *api, pa_time_event *timeEvent, const struct timeval *tv, void *data);
+	static void sUpdateTimingCbk(pa_stream *stream, int success, void *data);
 
 	void streamStateChanged();
 	void streamRequest(size_t nbytes);
 	void latencyUpdate();
 	void successCbk(int success);
+	void timeEventCbk(pa_mainloop_api *api, pa_time_event *timeEvent, const struct timeval *tv);
+	void updateTimingCbk(int success);
 
 	void waitStreamReady();
 	void drain();

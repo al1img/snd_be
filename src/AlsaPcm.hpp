@@ -21,6 +21,9 @@
 #ifndef SRC_ALSAPCM_HPP_
 #define SRC_ALSAPCM_HPP_
 
+#include <atomic>
+#include <thread>
+
 #include <alsa/asoundlib.h>
 
 #include <xen/be/Log.hpp>
@@ -85,10 +88,29 @@ private:
 	static PcmFormat sPcmFormat[];
 
 	snd_pcm_t *mHandle;
+	snd_async_handler_t *mAsyncHandle;
 	std::string mDeviceName;
 	SoundItf::StreamType mType;
+	unsigned int mBufferTime;
+	unsigned int mPeriodTime;
+
 	XenBackend::Log mLog;
 
+	std::vector<pollfd> mPollFds;
+	snd_pcm_uframes_t mPeriodSize;
+	snd_pcm_uframes_t mBufferSize;
+
+	std::thread mThread;
+	std::atomic_bool mTerminate;
+
+	static void sAsyncCallback(snd_async_handler_t *handler);
+	void asyncCallback();
+	void setHwParams(const SoundItf::PcmParams& params);
+	void setSwParams();
+	void startPollFds();
+	void stopPollFds();
+	void handlePollFds();
+	int waitForPoll();
 	snd_pcm_format_t convertPcmFormat(uint8_t format);
 };
 
