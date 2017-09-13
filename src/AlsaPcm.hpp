@@ -21,12 +21,10 @@
 #ifndef SRC_ALSAPCM_HPP_
 #define SRC_ALSAPCM_HPP_
 
-#include <atomic>
-#include <thread>
-
 #include <alsa/asoundlib.h>
 
 #include <xen/be/Log.hpp>
+#include <xen/be/Utils.hpp>
 
 #include "SoundItf.hpp"
 
@@ -77,6 +75,13 @@ public:
 	 */
 	void write(uint8_t* buffer, size_t size) override;
 
+	/**
+	 * Sets progress callback.
+	 * @param cbk callback
+	 */
+	void setProgressCbk(SoundItf::ProgressCbk cbk) override
+	{ mProgressCbk = cbk; }
+
 private:
 
 	struct PcmFormat
@@ -88,29 +93,17 @@ private:
 	static PcmFormat sPcmFormat[];
 
 	snd_pcm_t *mHandle;
-	snd_async_handler_t *mAsyncHandle;
 	std::string mDeviceName;
 	SoundItf::StreamType mType;
-	unsigned int mBufferTime;
-	unsigned int mPeriodTime;
-
+	XenBackend::Timer mTimer;
 	XenBackend::Log mLog;
 
-	std::vector<pollfd> mPollFds;
-	snd_pcm_uframes_t mPeriodSize;
-	snd_pcm_uframes_t mBufferSize;
+	SoundItf::ProgressCbk mProgressCbk;
+	unsigned int mRate;
 
-	std::thread mThread;
-	std::atomic_bool mTerminate;
-
-	static void sAsyncCallback(snd_async_handler_t *handler);
-	void asyncCallback();
 	void setHwParams(const SoundItf::PcmParams& params);
 	void setSwParams();
-	void startPollFds();
-	void stopPollFds();
-	void handlePollFds();
-	int waitForPoll();
+	void getTimeStamp();
 	snd_pcm_format_t convertPcmFormat(uint8_t format);
 };
 
