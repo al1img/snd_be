@@ -32,11 +32,14 @@
 #include "PulsePcm.hpp"
 #endif
 
+using std::bind;
 using std::min;
 using std::out_of_range;
 using std::shared_ptr;
 using std::vector;
 using std::unordered_map;
+
+using namespace std::placeholders;
 
 using XenBackend::XenException;
 using XenBackend::XenGnttabBuffer;
@@ -44,7 +47,6 @@ using XenBackend::XenGnttabBuffer;
 using SoundItf::PcmDevice;
 using SoundItf::PcmParams;
 using SoundItf::SoundException;
-using SoundItf::StreamType;
 
 unordered_map<int, CommandHandler::CommandFn> CommandHandler::sCmdTable =
 {
@@ -59,11 +61,16 @@ unordered_map<int, CommandHandler::CommandFn> CommandHandler::sCmdTable =
  ******************************************************************************/
 
 CommandHandler::CommandHandler(shared_ptr<PcmDevice> pcmDevice,
-							   StreamType type, int domId) :
+							   EventRingBufferPtr eventRingBuffer,
+							   domid_t domId) :
 	mPcmDevice(pcmDevice),
 	mDomId(domId),
+	mEventRingBuffer(eventRingBuffer),
+	mEventId(0),
 	mLog("CommandHandler")
 {
+	pcmDevice->setProgressCbk(bind(&CommandHandler::progressCbk, this, _1));
+
 	LOG(mLog, DEBUG) << "Create command handler, dom: " << mDomId;
 }
 
@@ -105,6 +112,15 @@ int CommandHandler::processCommand(const xensnd_req& req)
 /*******************************************************************************
  * Private
  ******************************************************************************/
+
+void CommandHandler::progressCbk(uint64_t frame)
+{
+	xensnd_evt event = { .id = mEventId++, .type = XENSND_EVT_CUR_POS };
+
+	event.op.cur_pos.position = frame;
+
+	mEventRingBuffer->sendEvent(event);
+}
 
 void CommandHandler::open(const xensnd_req& req)
 {

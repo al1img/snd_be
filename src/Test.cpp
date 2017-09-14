@@ -9,10 +9,10 @@
 
 #include <xen/be/Log.hpp>
 
-#include <xen/io/sndif.h>
-
 #include "AlsaPcm.hpp"
 #include "PulsePcm.hpp"
+
+#include <xen/io/sndif.h>
 
 using std::exception;
 using std::ifstream;

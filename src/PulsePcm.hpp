@@ -159,6 +159,13 @@ public:
 	 */
 	void write(uint8_t* buffer, size_t size) override;
 
+	/**
+	 * Sets progress callback.
+	 * @param cbk callback
+	 */
+	void setProgressCbk(SoundItf::ProgressCbk cbk) override
+	{ mProgressCbk = cbk; }
+
 private:
 
 	struct PcmFormat
@@ -185,6 +192,8 @@ private:
 	size_t mReadLength;
 
 	XenBackend::Log mLog;
+
+	SoundItf::ProgressCbk mProgressCbk;
 
 	static void sStreamStateChanged(pa_stream *stream, void *data);
 	static void sStreamRequest(pa_stream *stream, size_t nbytes, void *data);

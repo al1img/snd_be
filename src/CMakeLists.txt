@@ -31,14 +31,10 @@ endif()
 # Sources
 ################################################################################
 
-#set(SOURCES
-#	CommandHandler.cpp
-#	Config.cpp
-#	SndBackend.cpp
-#)
-
 set(SOURCES
-	Test.cpp
+	CommandHandler.cpp
+	Config.cpp
+	SndBackend.cpp
 )
 
 if(WITH_ALSA)
