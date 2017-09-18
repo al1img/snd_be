@@ -39,6 +39,8 @@ int main()
 
 		auto stream = mainLoop.createStream(StreamType::PLAYBACK, "Test");
 #endif
+
+
 		stream->open({44100, XENSND_PCM_FORMAT_S16_LE, 2});
 
 		ifstream file("media.wav", std::ifstream::in);
@@ -48,12 +50,18 @@ int main()
 			throw SoundException("Can't open input file", -1);
 		}
 
-		uint8_t buffer[1000000];
+		uint8_t buffer[1000];
 		streamsize size;
+
+		file.read(reinterpret_cast<char*>(buffer), 1000);
+		size = file.gcount();
+
+		stream->write(buffer, size);
+		stream->start();
 
 		while(file)
 		{
-			file.read(reinterpret_cast<char*>(buffer), 1000000);
+			file.read(reinterpret_cast<char*>(buffer), 1000);
 			size = file.gcount();
 
 			stream->write(buffer, size);

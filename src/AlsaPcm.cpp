@@ -92,8 +92,6 @@ void AlsaPcm::open(const PcmParams& params)
 			throw SoundException(
 					"Can't prepare audio interface for use", ret);
 		}
-
-		mTimer.start();
 	}
 	catch(const SoundException& e)
 	{
@@ -200,6 +198,87 @@ void AlsaPcm::write(uint8_t* buffer, size_t size)
 	}
 }
 
+
+void AlsaPcm::start()
+{
+	LOG(mLog, DEBUG) << "Start";
+
+	if (!mHandle)
+	{
+		throw SoundException("Alsa device is not opened: " +
+							 mDeviceName + ". Error: " +
+							 snd_strerror(-EFAULT), -EFAULT);
+	}
+
+	int ret = 0;
+
+	if ((ret = snd_pcm_start(mHandle)) < 0)
+	{
+		throw SoundException("Can't start device " + mDeviceName, ret);
+	}
+
+	mTimer.start();
+}
+
+void AlsaPcm::stop()
+{
+	LOG(mLog, DEBUG) << "Stop";
+
+	if (!mHandle)
+	{
+		throw SoundException("Alsa device is not opened: " +
+							 mDeviceName + ". Error: " +
+							 snd_strerror(-EFAULT), -EFAULT);
+	}
+
+	int ret = 0;
+
+	if ((ret = snd_pcm_drop(mHandle)) < 0)
+	{
+		throw SoundException("Can't stop device " + mDeviceName, ret);
+	}
+
+	mTimer.stop();
+}
+
+void AlsaPcm::pause()
+{
+	LOG(mLog, DEBUG) << "Pause";
+
+	if (!mHandle)
+	{
+		throw SoundException("Alsa device is not opened: " +
+							 mDeviceName + ". Error: " +
+							 snd_strerror(-EFAULT), -EFAULT);
+	}
+
+	int ret = 0;
+
+	if ((ret = snd_pcm_pause(mHandle, 1)) < 0)
+	{
+		throw SoundException("Can't pause device " + mDeviceName, ret);
+	}
+}
+
+void AlsaPcm::resume()
+{
+	LOG(mLog, DEBUG) << "Resume";
+
+	if (!mHandle)
+	{
+		throw SoundException("Alsa device is not opened: " +
+							 mDeviceName + ". Error: " +
+							 snd_strerror(-EFAULT), -EFAULT);
+	}
+
+	int ret = 0;
+
+	if ((ret = snd_pcm_pause(mHandle, 0)) < 0)
+	{
+		throw SoundException("Can't resume device " + mDeviceName, ret);
+	}
+}
+
 /*******************************************************************************
  * Private
  ******************************************************************************/
@@ -230,7 +309,12 @@ void AlsaPcm::setHwParams(const PcmParams& params)
 		throw SoundException("Can't get rate " + mDeviceName, ret);
 	}
 
-	LOG(mLog, DEBUG) << "Rate: " << mRate;
+	if ((ret = snd_pcm_hw_params_get_buffer_size(hwParams, &mBufferSize)) < 0)
+	{
+		throw SoundException("Can't get buffer size " + mDeviceName, ret);
+	}
+
+	LOG(mLog, DEBUG) << "Rate: " << mRate << ", buffer size: " << mBufferSize;
 
 	if (snd_pcm_hw_params_supports_audio_ts_type(hwParams, 0))
 		LOG(mLog, DEBUG) << "Playback supports audio compat timestamps";
@@ -271,6 +355,12 @@ void AlsaPcm::setSwParams()
 		throw SoundException("Can't set ts type " + mDeviceName, ret);
 	}
 
+	if ((ret = snd_pcm_sw_params_set_start_threshold(mHandle, swParams,
+													 mBufferSize * 2)) < 0)
+	{
+		throw SoundException("Can't set start threshold " + mDeviceName, ret);
+	}
+
 	if ((ret = snd_pcm_sw_params(mHandle, swParams)) < 0)
 	{
 		throw SoundException("Can't set swParams " + mDeviceName, ret);
@@ -297,11 +387,13 @@ void AlsaPcm::getTimeStamp()
 	uint64_t frame = ((audioTimeStamp.tv_sec * 1000000000 +
 					 audioTimeStamp.tv_nsec) * mRate) / 1000000000;
 
-	LOG(mLog, DEBUG) << "Frame: " << frame;
+	uint64_t bytes = snd_pcm_frames_to_bytes(mHandle, frame);
+
+	LOG(mLog, DEBUG) << "Frame: " << frame << ", bytes: " << bytes;
 
 	if (mProgressCbk)
 	{
-		mProgressCbk(frame);
+		mProgressCbk(bytes);
 	}
 }
 

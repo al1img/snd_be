@@ -160,6 +160,26 @@ public:
 	void write(uint8_t* buffer, size_t size) override;
 
 	/**
+	 * Starts the pcm device.
+	 */
+	void start() override;
+
+	/**
+	 * Stops the pcm device.
+	 */
+	void stop() override;
+
+	/**
+	 * Pauses the pcm device.
+	 */
+	void pause() override;
+
+	/**
+	 * Resumes the pcm device.
+	 */
+	void resume() override;
+
+	/**
 	 * Sets progress callback.
 	 * @param cbk callback
 	 */

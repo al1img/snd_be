@@ -469,6 +469,26 @@ void PulsePcm::write(uint8_t* buffer, size_t size)
 	}
 }
 
+void PulsePcm::start()
+{
+
+}
+
+void PulsePcm::stop()
+{
+
+}
+
+void PulsePcm::pause()
+{
+
+}
+
+void PulsePcm::resume()
+{
+
+}
+
 /*******************************************************************************
  * Private
  ******************************************************************************/

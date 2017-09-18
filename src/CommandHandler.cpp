@@ -22,7 +22,7 @@
 
 #include <sys/mman.h>
 
-#include <xen/errno.h>
+#include <errno.h>
 
 #ifdef WITH_ALSA
 #include "AlsaPcm.hpp"
@@ -53,7 +53,8 @@ unordered_map<int, CommandHandler::CommandFn> CommandHandler::sCmdTable =
 	{XENSND_OP_OPEN,	&CommandHandler::open},
 	{XENSND_OP_CLOSE,	&CommandHandler::close},
 	{XENSND_OP_READ,	&CommandHandler::read},
-	{XENSND_OP_WRITE,	&CommandHandler::write}
+	{XENSND_OP_WRITE,	&CommandHandler::write},
+	{XENSND_OP_TRIGGER, &CommandHandler::trigger}
 };
 
 /*******************************************************************************
@@ -95,7 +96,7 @@ int CommandHandler::processCommand(const xensnd_req& req)
 	{
 		LOG(mLog, ERROR) << e.what();
 
-		status = XEN_EINVAL;
+		status = -EINVAL;
 	}
 	catch(const SoundException& e)
 	{
@@ -135,8 +136,8 @@ void CommandHandler::open(const xensnd_req& req)
 	mBuffer.reset(new XenGnttabBuffer(mDomId, refs.data(), refs.size(),
 									  PROT_READ | PROT_WRITE));
 
-	mPcmDevice->open(PcmParams(openReq.pcm_rate, openReq.pcm_format,
-							   openReq.pcm_channels));
+	mPcmDevice->open( {openReq.pcm_rate, openReq.pcm_format,
+					   openReq.pcm_channels });
 }
 
 void CommandHandler::close(const xensnd_req& req)
@@ -166,6 +167,33 @@ void CommandHandler::write(const xensnd_req& req)
 
 	mPcmDevice->write(&(static_cast<uint8_t*>(mBuffer->get())[writeReq.offset]),
 					  writeReq.length);
+}
+
+void CommandHandler::trigger(const xensnd_req& req)
+{
+	const xensnd_trigger_req& triggerReq = req.op.trigger;
+
+	switch(triggerReq.type)
+	{
+	case XENSND_OP_TRIGGER_START:
+		DLOG(mLog, DEBUG) << "Handle command [TRIGGER][START]";
+		mPcmDevice->start();
+		break;
+	case XENSND_OP_TRIGGER_PAUSE:
+		DLOG(mLog, DEBUG) << "Handle command [TRIGGER][PAUSE]";
+		mPcmDevice->pause();
+		break;
+	case XENSND_OP_TRIGGER_STOP:
+		DLOG(mLog, DEBUG) << "Handle command [TRIGGER][STOP]";
+		mPcmDevice->stop();
+		break;
+	case XENSND_OP_TRIGGER_RESUME:
+		DLOG(mLog, DEBUG) << "Handle command [TRIGGER][RESUME]";
+		mPcmDevice->resume();
+		break;
+	default:
+		throw SoundException("Unknown trigger type", -EINVAL);
+	}
 }
 
 void CommandHandler::getBufferRefs(grant_ref_t startDirectory, uint32_t size,

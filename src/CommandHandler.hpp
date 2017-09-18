@@ -95,12 +95,13 @@ private:
 
 	XenBackend::Log mLog;
 
-	void progressCbk(uint64_t frame);
+	void progressCbk(uint64_t bytes);
 
 	void open(const xensnd_req& req);
 	void close(const xensnd_req& req);
 	void read(const xensnd_req& req);
 	void write(const xensnd_req& req);
+	void trigger(const xensnd_req& req);
 
 	void getBufferRefs(grant_ref_t startDirectory, uint32_t size, std::vector<grant_ref_t>& refs);
 };
