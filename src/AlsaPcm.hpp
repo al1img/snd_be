@@ -47,7 +47,7 @@ public:
 	 * @param name pcm device name
 	 */
 	explicit AlsaPcm(SoundItf::StreamType type,
-					 const std::string& deviceName = "default");
+					 const std::string& deviceName = "hw:0");
 	~AlsaPcm();
 
 	/**
@@ -120,8 +120,9 @@ private:
 
 	SoundItf::ProgressCbk mProgressCbk;
 	unsigned int mRate;
+
 	snd_pcm_uframes_t mBufferSize;
-	uint64_t mBytesWritten;
+	snd_pcm_uframes_t mFrameWritten;
 
 	void setHwParams(const SoundItf::PcmParams& params);
 	void setSwParams();

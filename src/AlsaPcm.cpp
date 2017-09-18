@@ -93,7 +93,7 @@ void AlsaPcm::open(const PcmParams& params)
 					"Can't prepare audio interface for use", ret);
 		}
 
-		mBytesWritten = 0;
+		mFrameWritten = 0;
 	}
 	catch(const SoundException& e)
 	{
@@ -168,11 +168,11 @@ void AlsaPcm::write(uint8_t* buffer, size_t size)
 							 snd_strerror(-EFAULT), -EFAULT);
 	}
 
-	mBytesWritten += size;
-
-	LOG(mLog, DEBUG) << "Written: " << mBytesWritten;
-
 	auto numFrames = snd_pcm_bytes_to_frames(mHandle, size);
+
+	mFrameWritten += numFrames;
+
+	LOG(mLog, DEBUG) << "Written bytes: " << snd_pcm_frames_to_bytes(mHandle, mFrameWritten);
 
 	while(numFrames > 0)
 	{
@@ -188,6 +188,7 @@ void AlsaPcm::write(uint8_t* buffer, size_t size)
 								   << ", message: " << snd_strerror(status);
 
 				snd_pcm_prepare(mHandle);
+				snd_pcm_start(mHandle);
 			}
 			else if (status < 0)
 			{
@@ -386,6 +387,8 @@ void AlsaPcm::getTimeStamp()
 		LOG(mLog, ERROR) << "Can't get status. Err: " << ret;
 	}
 
+	auto state = snd_pcm_status_get_state(status);
+
 	snd_htimestamp_t audioTimeStamp;
 
 	snd_pcm_status_get_audio_htstamp(status, &audioTimeStamp);
@@ -393,9 +396,19 @@ void AlsaPcm::getTimeStamp()
 	uint64_t frame = ((audioTimeStamp.tv_sec * 1000000000 +
 					 audioTimeStamp.tv_nsec) * mRate) / 1000000000;
 
-	uint64_t bytes = snd_pcm_frames_to_bytes(mHandle, frame);
 
-	LOG(mLog, DEBUG) << "Frame: " << frame << ", bytes: " << bytes;
+	uint64_t bytes;
+
+	if (state == SND_PCM_STATE_XRUN)
+	{
+		bytes = snd_pcm_frames_to_bytes(mHandle, mFrameWritten);
+	}
+	else
+	{
+		bytes = snd_pcm_frames_to_bytes(mHandle, frame);
+	}
+
+	LOG(mLog, DEBUG) << "Frame: " << frame << ", bytes: " << bytes << ", state: " << state;
 
 	if (mProgressCbk)
 	{
