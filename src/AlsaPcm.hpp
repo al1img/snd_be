@@ -121,6 +121,7 @@ private:
 	SoundItf::ProgressCbk mProgressCbk;
 	unsigned int mRate;
 	snd_pcm_uframes_t mBufferSize;
+	uint64_t mBytesWritten;
 
 	void setHwParams(const SoundItf::PcmParams& params);
 	void setSwParams();

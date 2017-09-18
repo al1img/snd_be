@@ -92,6 +92,8 @@ void AlsaPcm::open(const PcmParams& params)
 			throw SoundException(
 					"Can't prepare audio interface for use", ret);
 		}
+
+		mBytesWritten = 0;
 	}
 	catch(const SoundException& e)
 	{
@@ -165,6 +167,10 @@ void AlsaPcm::write(uint8_t* buffer, size_t size)
 							 mDeviceName + ". Error: " +
 							 snd_strerror(-EFAULT), -EFAULT);
 	}
+
+	mBytesWritten += size;
+
+	LOG(mLog, DEBUG) << "Written: " << mBytesWritten;
 
 	auto numFrames = snd_pcm_bytes_to_frames(mHandle, size);
 
