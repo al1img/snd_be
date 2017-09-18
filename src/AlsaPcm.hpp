@@ -123,6 +123,7 @@ private:
 
 	snd_pcm_uframes_t mBufferSize;
 	snd_pcm_uframes_t mFrameWritten;
+	snd_pcm_uframes_t mFrameUnderrun;
 
 	void setHwParams(const SoundItf::PcmParams& params);
 	void setSwParams();

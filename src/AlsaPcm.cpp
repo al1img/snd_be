@@ -94,6 +94,10 @@ void AlsaPcm::open(const PcmParams& params)
 		}
 
 		mFrameWritten = 0;
+		mFrameUnderrun = 0;
+
+		mTimer.start();
+
 	}
 	catch(const SoundException& e)
 	{
@@ -170,9 +174,7 @@ void AlsaPcm::write(uint8_t* buffer, size_t size)
 
 	auto numFrames = snd_pcm_bytes_to_frames(mHandle, size);
 
-	mFrameWritten += numFrames;
-
-	LOG(mLog, DEBUG) << "Written bytes: " << snd_pcm_frames_to_bytes(mHandle, mFrameWritten);
+	bool restartAfterError = false;
 
 	while(numFrames > 0)
 	{
@@ -187,8 +189,16 @@ void AlsaPcm::write(uint8_t* buffer, size_t size)
 				LOG(mLog, WARNING) << "Device: " << mDeviceName
 								   << ", message: " << snd_strerror(status);
 
-				snd_pcm_prepare(mHandle);
-				snd_pcm_start(mHandle);
+				if ((status = snd_pcm_recover(mHandle, status, 0)) < 0)
+				{
+					throw SoundException("Can't recover underrun: " +
+										 mDeviceName + ". Error: " +
+										 snd_strerror(status), status);
+				}
+
+				mFrameUnderrun = mFrameWritten;
+
+				restartAfterError = true;
 			}
 			else if (status < 0)
 			{
@@ -200,6 +210,19 @@ void AlsaPcm::write(uint8_t* buffer, size_t size)
 			{
 				numFrames -= status;
 				buffer = &buffer[snd_pcm_frames_to_bytes(mHandle, status)];
+				mFrameWritten += status;
+
+				if (snd_pcm_state(mHandle) != SND_PCM_STATE_RUNNING && restartAfterError)
+				{
+					restartAfterError = false;
+
+					if ((status = snd_pcm_start(mHandle)) < 0)
+					{
+						throw SoundException("Can't recover underrun: " +
+											 mDeviceName + ". Error: " +
+											 snd_strerror(status), status);
+					}
+				}
 			}
 		}
 	}
@@ -223,8 +246,6 @@ void AlsaPcm::start()
 	{
 		throw SoundException("Can't start device " + mDeviceName, ret);
 	}
-
-	mTimer.start();
 }
 
 void AlsaPcm::stop()
@@ -396,6 +417,7 @@ void AlsaPcm::getTimeStamp()
 	uint64_t frame = ((audioTimeStamp.tv_sec * 1000000000 +
 					 audioTimeStamp.tv_nsec) * mRate) / 1000000000;
 
+	frame += mFrameUnderrun;
 
 	uint64_t bytes;
 
