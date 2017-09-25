@@ -43,7 +43,7 @@ int main()
 
 		stream->open({44100, XENSND_PCM_FORMAT_S16_LE, 2});
 
-		ifstream file("media.wav", std::ifstream::in);
+		ifstream file("car_reverse.wav", std::ifstream::in);
 
 		if (!file.is_open())
 		{
@@ -52,6 +52,8 @@ int main()
 
 		uint8_t buffer[1000];
 		streamsize size;
+
+		sleep(1);
 
 		file.read(reinterpret_cast<char*>(buffer), 1000);
 		size = file.gcount();
@@ -65,7 +67,12 @@ int main()
 			size = file.gcount();
 
 			stream->write(buffer, size);
+			sleep(1);
+
 		}
+
+
+		sleep(1);
 
 		file.close();
 
